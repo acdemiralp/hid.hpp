@@ -67,13 +67,13 @@ public:
     return *this;
   }
 
-  void write(const std::uint8_t* data, const std::size_t length)
+  void              write (const std::span<std::uint8_t>& data) const
   {
-    hid_write(native_, data, length);
+    hid_write(native_, data.data(), data.size());
   }
-  void read (      std::uint8_t* data, const std::size_t length)
+  void              read  (      std::span<std::uint8_t>& data) const
   {
-    hid_read (native_, data, length);
+    hid_read (native_, data.data(), data.size());
   }
 
   [[nodiscard]]
@@ -152,21 +152,21 @@ inline std::vector  <device_info>          enumerate  (const std::uint16_t vendo
   return result;
 }
 
-inline std::expected<device, std::wstring> open_path  (const std::string& path)
+inline std::expected<device, std::wstring> open       (const std::string&  path) noexcept
 {
   if (const auto native = hid_open_path(path.c_str()); native != nullptr)
     return device(native);
   return std::unexpected(error());
 }
-inline std::expected<device, std::wstring> open       (const std::uint16_t vendor_id    , const std::uint16_t product_id    , const std::optional<std::wstring>& serial_number = std::nullopt)
+inline std::expected<device, std::wstring> open       (const std::uint16_t vendor_id    , const std::uint16_t product_id    , const std::optional<std::wstring>& serial_number = std::nullopt) noexcept
 {
   if (const auto native = hid_open(vendor_id, product_id, serial_number ? serial_number.value().c_str() : nullptr); native != nullptr)
     return device(native);
   return std::unexpected(error());
 }
-inline std::expected<device, std::wstring> open       (const device_info& info)
+inline std::expected<device, std::wstring> open       (const device_info&  info) noexcept
 {
-  if (auto result = open_path(info.path); result.has_value())
+  if (auto result = open(info.path); result.has_value())
     return result;
   return open(info.vendor_id, info.product_id, !info.serial_number.empty() ? info.serial_number : std::optional<std::wstring>(std::nullopt));
 }
