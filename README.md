@@ -47,4 +47,5 @@ Alternatively, you can just copy `include/hid/hid.hpp` to your project.
     | `hid_error(hid_device*) -> const wchar_t*`                    | `hid::device::error() -> std::wstring`                                                                                                   | Member function for the non-null device case. Does not return an `std::expected<...>` since it is guaranteed to not fail.                                                                                                                                                                                                              |
 
 ### Future direction
-- Composing and reading binary data such as report descriptors currently involve looking up specifications at usb.org. Perhaps an auxiliary library can ease this process.
+- Consider casting/accepting the returned/passed byte arrays to/as arbitrary types.
+- Interacting with binary data such as report descriptors require reading the specification, which can be eased with a library that maps text descriptors to binary and vice versa.

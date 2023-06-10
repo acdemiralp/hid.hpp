@@ -1,8 +1,10 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <expected>
 #include <optional>
+#include <ratio>
 #include <span>
 #include <string>
 #include <vector>
@@ -40,7 +42,7 @@ struct device_info
 class device
 {
 public:
-  explicit device  (hid_device* native)
+  explicit device  (hid_device* native) noexcept
   : native_(native)
   {
     
@@ -51,7 +53,7 @@ public:
   {
     temp.native_ = nullptr;
   }
-  virtual ~device  ()
+  virtual ~device  () noexcept
   {
     if (native_)
       hid_close(native_);
@@ -68,7 +70,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<device_info, std::wstring>               device_info        () const noexcept
+  std::expected<device_info, std::wstring>               device_info        () const
   {
     if (const auto info = hid_get_device_info(native_))
       return hid::device_info
@@ -89,7 +91,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              serial_number      (const std::size_t length = 256) const noexcept
+  std::expected<std::wstring, std::wstring>              serial_number      (const std::size_t length = 256) const
   {
     std::wstring result(length, '\0');
     if (hid_get_serial_number_string(native_, result.data(), result.size()) == 0)
@@ -97,7 +99,7 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              manufacturer_string(const std::size_t length = 256) const noexcept
+  std::expected<std::wstring, std::wstring>              manufacturer_string(const std::size_t length = 256) const
   {
     std::wstring result(length, '\0');
     if (hid_get_manufacturer_string(native_, result.data(), result.size()) == 0)
@@ -105,7 +107,7 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              product_string     (const std::size_t length = 256) const noexcept
+  std::expected<std::wstring, std::wstring>              product_string     (const std::size_t length = 256) const
   {
     std::wstring result(length, '\0');
     if (hid_get_product_string(native_, result.data(), result.size()) == 0)
@@ -114,7 +116,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              indexed_string     (const std::int32_t index, const std::size_t length = 256) const noexcept
+  std::expected<std::wstring, std::wstring>              indexed_string     (const std::int32_t index, const std::size_t length = 256) const
   {
     std::wstring result(length, '\0');
     if (hid_get_indexed_string(native_, index, result.data(), result.size()) == 0)
@@ -123,7 +125,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> report_descriptor  () const noexcept
+  std::expected<std::vector<std::uint8_t>, std::wstring> report_descriptor  () const
   {
     std::vector<std::uint8_t> result(HID_API_MAX_REPORT_DESCRIPTOR_SIZE, '\0');
     if (const auto size = hid_get_report_descriptor(native_, result.data(), result.size()); size >= 0)
@@ -135,7 +137,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> input_report       (const std::uint8_t report_id, const std::size_t length = 256) const noexcept
+  std::expected<std::vector<std::uint8_t>, std::wstring> input_report       (const std::uint8_t report_id, const std::size_t length = 256) const
   {
     std::vector<std::uint8_t> result(length, '\0');
     result[0] = report_id;
@@ -147,7 +149,7 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> feature_report     (const std::uint8_t report_id, const std::size_t length = 256) const noexcept
+  std::expected<std::vector<std::uint8_t>, std::wstring> feature_report     (const std::uint8_t report_id, const std::size_t length = 256) const
   {
     std::vector<std::uint8_t> result(length, '\0');
     result[0] = report_id;
@@ -159,39 +161,57 @@ public:
     return std::unexpected(error());
   }
 
-  // TODO BEGIN
-  void                                                   read               (      std::span<std::uint8_t>& data) const noexcept
+  [[nodiscard]]
+  std::expected<std::vector<std::uint8_t>, std::wstring> read               (const std::size_t length = 256) const
   {
-    hid_read(native_, data.data(), data.size());
+    std::vector<std::uint8_t> result(length, '\0');
+    if (const auto size = hid_read(native_, result.data(), result.size()); size >= 0)
+    {
+      result.resize(size);
+      return result;
+    }
+    return std::unexpected(error());
   }
-  void                                                   read               (      std::span<std::uint8_t>& data, const std::int32_t milliseconds) const noexcept
+  [[nodiscard]]
+  std::expected<std::vector<std::uint8_t>, std::wstring> read               (const std::chrono::duration<std::int32_t, std::milli>& timeout, const std::size_t length = 256) const
   {
-    hid_read_timeout(native_, data.data(), data.size(), milliseconds);
-  }
-  void                                                   write              (const std::span<std::uint8_t>& data) const noexcept
-  {
-    hid_write(native_, data.data(), data.size());
+    std::vector<std::uint8_t> result(length, '\0');
+    if (const auto size = hid_read_timeout(native_, result.data(), result.size(), timeout.count()); size >= 0)
+    {
+      result.resize(size);
+      return result;
+    }
+    return std::unexpected(error());
   }
 
-  std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<std::uint8_t>& data) const noexcept
+  std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<std::uint8_t>& data) const
   {
     if (const auto size = hid_send_feature_report(native_, data.data(), data.size()); size >= 0)
       return size;
     return std::unexpected(error());
   }
+
+  std::expected<std::int32_t, std::wstring>              write              (const std::span<std::uint8_t>& data) const
+  {
+    if (const auto size = hid_write(native_, data.data(), data.size()); size >= 0)
+      return size;
+    return std::unexpected(error());
+  }
+
+  // TODO BEGIN
   template <typename type>
-  std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<type>& data) const noexcept
+  std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<type>& data) const
   {
     return send_feature_report(std::span{reinterpret_cast<const std::uint8_t*>(data.data()), data.size() * sizeof(type) /* / sizeof(std::uint8_t) */});
   }
   template <typename type>
-  std::expected<std::int32_t, std::wstring>              send_feature_report(const type& data) const noexcept
+  std::expected<std::int32_t, std::wstring>              send_feature_report(const type& data) const
   {
     return send_feature_report(std::span{reinterpret_cast<const std::uint8_t*>(&data), sizeof(type) /* / sizeof(std::uint8_t) */ });
   }
   // TODO END
 
-  std::expected<void, std::wstring>                      set_nonblocking    (const bool nonblocking) const noexcept
+  std::expected<void, std::wstring>                      set_nonblocking    (const bool nonblocking) const
   {
     if (hid_set_nonblocking(native_, nonblocking) == 0)
       return {};
@@ -199,7 +219,7 @@ public:
   }
 
   [[nodiscard]]
-  std::wstring                                           error              () const noexcept
+  std::wstring                                           error              () const
   {
     return hid_error(native_);
   }
@@ -214,18 +234,18 @@ protected:
   hid_device* native_;
 };
 
-inline std::wstring                        error      () noexcept
+inline std::wstring                        error      ()
 {
   return hid_error(nullptr);
 }
 
-inline std::expected<void, std::wstring>   init       () noexcept
+inline std::expected<void, std::wstring>   init       ()
 {
   if (hid_init() == 0)
     return {};
   return std::unexpected(error());
 }
-inline std::expected<void, std::wstring>   exit       () noexcept
+inline std::expected<void, std::wstring>   exit       ()
 {
   if (hid_exit() == 0)
     return {};
@@ -267,19 +287,19 @@ inline std::vector<device_info>            enumerate  (const std::uint16_t vendo
   return result;
 }
 
-inline std::expected<device, std::wstring> open       (const std::uint16_t vendor_id    , const std::uint16_t product_id    , const std::optional<std::wstring>& serial_number = std::nullopt) noexcept
+inline std::expected<device, std::wstring> open       (const std::uint16_t vendor_id    , const std::uint16_t product_id    , const std::optional<std::wstring>& serial_number = std::nullopt)
 {
   if (const auto native = hid_open(vendor_id, product_id, serial_number ? serial_number.value().c_str() : nullptr); native != nullptr)
     return device(native);
   return std::unexpected(error());
 }
-inline std::expected<device, std::wstring> open       (const std::string& path) noexcept
+inline std::expected<device, std::wstring> open       (const std::string& path)
 {
   if (const auto native = hid_open_path(path.c_str()); native != nullptr)
     return device(native);
   return std::unexpected(error());
 }
-inline std::expected<device, std::wstring> open       (const device_info& info) noexcept
+inline std::expected<device, std::wstring> open       (const device_info& info)
 {
   if (auto result = open(info.path); result.has_value())
     return result;
@@ -290,7 +310,7 @@ inline const api_version*                  version    () noexcept
 {
   return hid_version();
 }
-inline std::string                         version_str() noexcept
+inline std::string                         version_str()
 {
   return hid_version_str();
 }

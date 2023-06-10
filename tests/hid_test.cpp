@@ -5,9 +5,9 @@
 
 TEST_CASE("HID Test")
 {
-  // hid::init();
+  hid::init();
 
-  // std::cout << "Version: " << hid::version_str() << "\n";
+  std::cout << "Version: " << hid::version_str() << "\n";
 
   auto device_infos = hid::enumerate();
   for (auto& device_info : device_infos)
@@ -26,5 +26,5 @@ TEST_CASE("HID Test")
 
   auto device = open(device_infos[0]);
 
-  // hid::exit();
+  hid::exit();
 }
