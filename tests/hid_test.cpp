@@ -24,7 +24,7 @@ TEST_CASE("HID Test")
       " " << device_info.interface_number                                                                << "\n" <<
       " " << static_cast<std::int32_t>(device_info.bus_type)                                             << "\n";
 
-  auto device = hid::open(device_infos[0]);
+  auto device = open(device_infos[0]);
 
   // hid::exit();
 }

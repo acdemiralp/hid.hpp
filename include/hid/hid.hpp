@@ -89,7 +89,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              serial_number      (const std::size_t length = 255) const noexcept
+  std::expected<std::wstring, std::wstring>              serial_number      (const std::size_t length = 256) const noexcept
   {
     std::wstring result(length, '\0');
     if (hid_get_serial_number_string(native_, result.data(), result.size()) == 0)
@@ -97,7 +97,7 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              manufacturer_string(const std::size_t length = 255) const noexcept
+  std::expected<std::wstring, std::wstring>              manufacturer_string(const std::size_t length = 256) const noexcept
   {
     std::wstring result(length, '\0');
     if (hid_get_manufacturer_string(native_, result.data(), result.size()) == 0)
@@ -105,7 +105,7 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              product_string     (const std::size_t length = 255) const noexcept
+  std::expected<std::wstring, std::wstring>              product_string     (const std::size_t length = 256) const noexcept
   {
     std::wstring result(length, '\0');
     if (hid_get_product_string(native_, result.data(), result.size()) == 0)
@@ -114,7 +114,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::wstring, std::wstring>              indexed_string     (const std::int32_t index, const std::size_t length = 255) const noexcept
+  std::expected<std::wstring, std::wstring>              indexed_string     (const std::int32_t index, const std::size_t length = 256) const noexcept
   {
     std::wstring result(length, '\0');
     if (hid_get_indexed_string(native_, index, result.data(), result.size()) == 0)
@@ -134,11 +134,11 @@ public:
     return std::unexpected(error());
   }
 
-  // TODO BEGIN
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> input_report       (const std::size_t length = 255) const noexcept
+  std::expected<std::vector<std::uint8_t>, std::wstring> input_report       (const std::uint8_t report_id, const std::size_t length = 256) const noexcept
   {
     std::vector<std::uint8_t> result(length, '\0');
+    result[0] = report_id;
     if (const auto size = hid_get_input_report(native_, result.data(), result.size()); size >= 0)
     {
       result.resize(size);
@@ -147,9 +147,10 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> feature_report     (const std::size_t length = 255) const noexcept
+  std::expected<std::vector<std::uint8_t>, std::wstring> feature_report     (const std::uint8_t report_id, const std::size_t length = 256) const noexcept
   {
     std::vector<std::uint8_t> result(length, '\0');
+    result[0] = report_id;
     if (const auto size = hid_get_feature_report(native_, result.data(), result.size()); size >= 0)
     {
       result.resize(size);
@@ -158,6 +159,7 @@ public:
     return std::unexpected(error());
   }
 
+  // TODO BEGIN
   void                                                   read               (      std::span<std::uint8_t>& data) const noexcept
   {
     hid_read(native_, data.data(), data.size());
@@ -176,6 +178,16 @@ public:
     if (const auto size = hid_send_feature_report(native_, data.data(), data.size()); size >= 0)
       return size;
     return std::unexpected(error());
+  }
+  template <typename type>
+  std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<type>& data) const noexcept
+  {
+    return send_feature_report(std::span{reinterpret_cast<const std::uint8_t*>(data.data()), data.size() * sizeof(type) /* / sizeof(std::uint8_t) */});
+  }
+  template <typename type>
+  std::expected<std::int32_t, std::wstring>              send_feature_report(const type& data) const noexcept
+  {
+    return send_feature_report(std::span{reinterpret_cast<const std::uint8_t*>(&data), sizeof(type) /* / sizeof(std::uint8_t) */ });
   }
   // TODO END
 
