@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <expected>
 #include <optional>
+#include <ostream>
 #include <ratio>
 #include <span>
 #include <string>
@@ -67,6 +69,20 @@ public:
       temp.native_ = nullptr;
     }
     return *this;
+  }
+
+  // Accessors.
+
+  [[nodiscard]]
+  const hid_device*                                      native             () const noexcept
+  {
+    return native_;
+  }
+
+  [[nodiscard]]
+  std::wstring                                           error              () const
+  {
+    return hid_error(native_);
   }
 
   [[nodiscard]]
@@ -184,6 +200,8 @@ public:
     return std::unexpected(error());
   }
 
+  // Mutators.
+
   std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<std::uint8_t>& data) const
   {
     if (const auto size = hid_send_feature_report(native_, data.data(), data.size()); size >= 0)
@@ -198,36 +216,11 @@ public:
     return std::unexpected(error());
   }
 
-  // TODO BEGIN
-  template <typename type>
-  std::expected<std::int32_t, std::wstring>              send_feature_report(const std::span<type>& data) const
-  {
-    return send_feature_report(std::span{reinterpret_cast<const std::uint8_t*>(data.data()), data.size() * sizeof(type) /* / sizeof(std::uint8_t) */});
-  }
-  template <typename type>
-  std::expected<std::int32_t, std::wstring>              send_feature_report(const type& data) const
-  {
-    return send_feature_report(std::span{reinterpret_cast<const std::uint8_t*>(&data), sizeof(type) /* / sizeof(std::uint8_t) */ });
-  }
-  // TODO END
-
   std::expected<void, std::wstring>                      set_nonblocking    (const bool nonblocking) const
   {
     if (hid_set_nonblocking(native_, nonblocking) == 0)
       return {};
     return std::unexpected(error());
-  }
-
-  [[nodiscard]]
-  std::wstring                                           error              () const
-  {
-    return hid_error(native_);
-  }
-
-  [[nodiscard]]
-  const hid_device*                                      native             () const noexcept
-  {
-    return native_;
   }
 
 protected:
@@ -313,5 +306,48 @@ inline const api_version*                  version    () noexcept
 inline std::string                         version_str()
 {
   return hid_version_str();
+}
+
+// Stream utilities.
+inline std::string                         to_string  (const bus_type&    value)
+{
+  static const std::array<std::string, 5> strings
+  {
+    "unknown",
+    "usb",
+    "bluetooth",
+    "i2c",
+    "spi"
+  };
+  return strings[static_cast<std::size_t>(value)];
+}
+inline std::wstring                        to_wstring (const device_info& value)
+{
+  const auto bus_type_str = to_string(value.bus_type);
+  return
+    std::wstring(L"path: ")                + std::wstring(value.path.begin(), value.path.end())     + L"\n" +
+    std::wstring(L"vendor_id: ")           + std::to_wstring(value.vendor_id)                       + L"\n" +
+    std::wstring(L"product_id: ")          + std::to_wstring(value.product_id)                      + L"\n" +
+    std::wstring(L"serial_number: ")       + value.serial_number                                    + L"\n" +
+    std::wstring(L"release_number: ")      + std::to_wstring(value.release_number)                  + L"\n" +
+    std::wstring(L"manufacturer_string: ") + value.manufacturer_string                              + L"\n" +
+    std::wstring(L"product_string: ")      + value.product_string                                   + L"\n" +
+    std::wstring(L"usage_page: ")          + std::to_wstring(value.usage_page)                      + L"\n" +
+    std::wstring(L"usage: ")               + std::to_wstring(value.usage)                           + L"\n" +
+    std::wstring(L"interface_number: ")    + std::to_wstring(value.interface_number)                + L"\n" +
+    std::wstring(L"bus_type: ")            + std::wstring(bus_type_str.begin(), bus_type_str.end()) + L"\n" ;
+}
+
+template <typename type>
+std::basic_ostream<type>& operator<<(std::basic_ostream<type>& stream, const bus_type&    value)
+{
+  stream << to_string(value).c_str();
+  return stream;
+}
+template <typename type>
+std::basic_ostream<type>& operator<<(std::basic_ostream<type>& stream, const device_info& value)
+{
+  stream << to_wstring(value).c_str();
+  return stream;
 }
 }

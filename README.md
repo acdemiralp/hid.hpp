@@ -17,8 +17,37 @@ Alternatively, you can just copy `include/hid/hid.hpp` to your project.
 
 ### Example usage
 ```cpp
-// TODO
+#include <hid/hid.hpp>
+#include <iostream>
+
+int main(int argc, char** argv)
+{
+  // Enumerate and print devices.
+  const auto device_infos = hid::enumerate();
+  for (auto& device_info : device_infos)
+    std::wcout << device_info << "\n";
+
+  if (device_infos.size() > 0)
+  {
+    // Open the first device.
+    const auto device = hid::open(device_infos[0]);
+    
+    // Error handling can be bypassed if the results are assumed to be valid:
+    std::wcout << "serial_number: "       << *device->serial_number      () << "\n";
+    std::wcout << "manufacturer_string: " << *device->manufacturer_string() << "\n";
+    std::wcout << "product_string: "      << *device->product_string     () << "\n";
+    
+    // Error handling can be performed if the results are not assumed to be valid:
+    if (auto result = device->indexed_string(1))
+      std::wcout << "indexed_string(1): " << result.value() << "\n";
+    else
+      std::wcout << "Error: "             << result.error() << "\n";
+  }
+
+  return 0;
+}
 ```
+See the test for more.
 
 ### Design decisions
 - **Enums**:
@@ -45,7 +74,8 @@ Alternatively, you can just copy `include/hid/hid.hpp` to your project.
     |---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
     | `hid_close(hid_device*) -> void`                              | `hid::device::~device()`                                                                                                                 |                                                                                                                                                                                                                                                                                                                                        |
     | `hid_error(hid_device*) -> const wchar_t*`                    | `hid::device::error() -> std::wstring`                                                                                                   | Member function for the non-null device case. Does not return an `std::expected<...>` since it is guaranteed to not fail.                                                                                                                                                                                                              |
+    // TODO
 
 ### Future direction
-- Consider casting/accepting the returned/passed byte arrays to/as arbitrary types.
-- Interacting with binary data such as report descriptors require reading the specification, which can be eased with a library that maps text descriptors to binary and vice versa.
+- Consider casting/accepting output/input byte arrays to/as arbitrary types.
+- Interacting with binary data could be eased through mapping text descriptors to binary descriptors and vice versa. See [Frank Zhao's online parser](https://eleccelerator.com/usbdescreqparser/) as an example.
