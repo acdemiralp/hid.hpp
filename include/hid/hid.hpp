@@ -148,10 +148,10 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> input_report       (const std::uint8_t report_id, const std::size_t length = 256) const
+  std::expected<std::vector<std::uint8_t>, std::wstring> input_report       (const std::uint8_t id, const std::size_t length = 256) const
   {
     std::vector<std::uint8_t> result(length, '\0');
-    result[0] = report_id;
+    result[0] = id;
     if (const auto size = hid_get_input_report(native_, result.data(), result.size()); size >= 0)
     {
       result.resize(size);
@@ -160,10 +160,10 @@ public:
     return std::unexpected(error());
   }
   [[nodiscard]]
-  std::expected<std::vector<std::uint8_t>, std::wstring> feature_report     (const std::uint8_t report_id, const std::size_t length = 256) const
+  std::expected<std::vector<std::uint8_t>, std::wstring> feature_report     (const std::uint8_t id, const std::size_t length = 256) const
   {
     std::vector<std::uint8_t> result(length, '\0');
-    result[0] = report_id;
+    result[0] = id;
     if (const auto size = hid_get_feature_report(native_, result.data(), result.size()); size >= 0)
     {
       result.resize(size);
