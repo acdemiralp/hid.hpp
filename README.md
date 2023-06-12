@@ -1,7 +1,7 @@
 ### hid.hpp
 Single header C++23 wrapper for [libusb/hidapi](https://github.com/libusb/hidapi).
 
-### Building the test
+### Building the tests
 - Run `bootstrap.[bat|sh]`. This will install doctest + hidapi, and create the project under the `./build` directory.
 - Run cmake on the `./build` directory and toggle `BUILD_TESTS`.
 - Configure, generate, make.
@@ -24,30 +24,51 @@ int main(int argc, char** argv)
 {
   // Enumerate and print devices.
   const auto device_infos = hid::enumerate();
-  for (auto& device_info : device_infos)
+  for (const auto& device_info : device_infos)
     std::wcout << device_info << "\n";
 
-  if (device_infos.size() > 0)
+  if (!device_infos.empty())
   {
     // Open the first device.
     const auto device = hid::open(device_infos[0]);
-    
-    // Error handling can be bypassed if the results are assumed to be valid:
-    std::wcout << "serial_number: "       << *device->serial_number      () << "\n";
-    std::wcout << "manufacturer_string: " << *device->manufacturer_string() << "\n";
-    std::wcout << "product_string: "      << *device->product_string     () << "\n";
-    
-    // Error handling can be performed if the results are not assumed to be valid:
-    if (auto result = device->indexed_string(1))
-      std::wcout << "indexed_string(1): " << result.value() << "\n";
+    if (device)
+    {
+      // Print its report descriptor.
+      const auto descriptor = device->report_descriptor();
+      std::wcout << "report_descriptor: ";
+      for (const auto value : *descriptor)
+        std::wcout << std::format(L"{:#04x}", value) << " ";
+      std::wcout << "\n";
+
+      // Set it to non-blocking.
+      device->set_nonblocking(true);
+
+      // Read from it.
+      if (const auto result = device->read())
+      {
+        std::wcout << "read: ";
+        for (const auto value : *result)
+          std::wcout << std::format(L"{:#04x}", value) << " ";
+        std::wcout << "\n";
+      }
+      else
+        std::wcout << "read failed with error: " << result.error() << "\n";
+
+      // Write to it.
+      std::vector<std::uint8_t> data(8, 0x00);
+      if (const auto result = device->write(data))
+        std::wcout << "wrote " << *result << " bytes.\n";
+      else
+        std::wcout << "write failed with error: " << result.error() << "\n";
+    }
     else
-      std::wcout << "Error: "             << result.error() << "\n";
+      std::wcout << "open failed with error: " << device.error() << "\n";
   }
 
   return 0;
 }
 ```
-See the test for more.
+See the tests for more.
 
 ### Design decisions
 - **Enums**:
@@ -78,4 +99,4 @@ See the test for more.
 
 ### Future direction
 - Consider casting/accepting output/input byte arrays to/as arbitrary types.
-- Interacting with binary data could be eased through mapping text descriptors to binary descriptors and vice versa. See [Frank Zhao's online parser](https://eleccelerator.com/usbdescreqparser/) as an example.
+- Interacting with binary data could be eased through mapping text descriptors to binary descriptors and vice versa. This could also be used to determine and set the exact sizes of the reports without the user. See [Frank Zhao's online parser](https://eleccelerator.com/usbdescreqparser/) as an example.
