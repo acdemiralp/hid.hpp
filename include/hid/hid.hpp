@@ -39,7 +39,7 @@ struct device_info
   std::uint16_t usage_page;
   std::uint16_t usage;
   std::int32_t  interface_number;
-  bus_type      bus_type;
+  hid::bus_type bus_type;
 };
 
 class device
@@ -81,7 +81,7 @@ public:
   }
 
   [[nodiscard]]
-  std::expected<device_info, std::wstring>               device_info        () const
+  std::expected<hid::device_info, std::wstring>          device_info        () const
   {
     if (const auto info = hid_get_device_info(native_))
       return hid::device_info
